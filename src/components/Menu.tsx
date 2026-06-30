@@ -12,30 +12,30 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Menu() {
   const opciones = [
-    { nombre: "Viajes", ruta: "/viajes", icono: <MdDateRange size={20} /> },
+    { nombre: "Viajes", ruta: "/Viajes", icono: <MdDateRange size={20} /> },
     {
       nombre: "Lista de Adeudos",
-      ruta: "/lista_de_adeudos",
+      ruta: "/Lista_adeudos",
       icono: <MdLocalGroceryStore size={20} />,
     },
     {
       nombre: "Abonos",
-      ruta: "/abonos",
+      ruta: "/Abonos",
       icono: <MdAccountBalanceWallet size={20} />,
     },
     {
       nombre: "Pagados",
-      ruta: "/pagados",
+      ruta: "/Pagados",
       icono: <MdCleanHands size={20} />,
     },
     {
       nombre: "Insumos",
-      ruta: "/insumos",
+      ruta: "/Insumos",
       icono: <MdShoppingBasket size={20} />,
     },
     {
       nombre: "Empleados",
-      ruta: "/empleados",
+      ruta: "/Empleados",
       icono: <MdPerson size={20} />,
     },
   ];

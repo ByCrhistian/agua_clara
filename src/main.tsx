@@ -1,13 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
 import "./index.css";
-import Menu from "./components/Menu";
+import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Menu />
-    </BrowserRouter>
+    {/* Dejamos solo a <App />, ya que el RouterProvider de tu maestro vive adentro */}
+    <App /> 
   </StrictMode>
 );
