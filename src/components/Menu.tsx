@@ -9,35 +9,34 @@ import {
 } from "react-icons/md";
 import { FaBars, FaSignOutAlt, FaTimes } from "react-icons/fa";
 import { Link, useLocation } from "react-router-dom";
-import Logo from "../assets/Logo.png";
 
 export default function Menu() {
   const opciones = [
-    { nombre: "Viajes", ruta: "/viajes", icono: <MdDateRange /> },
+    { nombre: "Viajes", ruta: "/viajes", icono: <MdDateRange size={20} /> },
     {
       nombre: "Lista de Adeudos",
       ruta: "/lista_de_adeudos",
-      icono: <MdLocalGroceryStore />,
+      icono: <MdLocalGroceryStore size={20} />,
     },
     {
       nombre: "Abonos",
       ruta: "/abonos",
-      icono: <MdAccountBalanceWallet />,
+      icono: <MdAccountBalanceWallet size={20} />,
     },
     {
       nombre: "Pagados",
       ruta: "/pagados",
-      icono: <MdCleanHands />,
+      icono: <MdCleanHands size={20} />,
     },
     {
       nombre: "Insumos",
       ruta: "/insumos",
-      icono: <MdShoppingBasket />,
+      icono: <MdShoppingBasket size={20} />,
     },
     {
       nombre: "Empleados",
       ruta: "/empleados",
-      icono: <MdPerson />,
+      icono: <MdPerson size={20} />,
     },
   ];
 
@@ -46,65 +45,75 @@ export default function Menu() {
 
   return (
     <>
-      {/* Botón para celular */}
+      {/* Botón flotante para celular */}
       <button
-        className="lg:hidden fixed top-4 left-4 z-50 text-white bg-blue-600 p-2 rounded"
+        className="lg:hidden fixed top-4 left-4 z-50 text-white bg-sky-500 p-2.5 rounded-xl shadow-lg hover:bg-sky-600 transition-all"
         onClick={() => setAbierto(!abierto)}
       >
-        {abierto ? <FaTimes size={22} /> : <FaBars size={22} />}
+        {abierto ? <FaTimes size={20} /> : <FaBars size={20} />}
       </button>
 
-      {/* Fondo oscuro */}
+      {/* Fondo oscuro cuando el menú está abierto en celular */}
       {abierto && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm"
           onClick={() => setAbierto(false)}
         />
       )}
 
-      {/* Menú */}
+      {/* Barra Lateral / Menú */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-100 bg-[#01042B] text-white p-5 z-40 transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-screen w-64 bg-[#01042B] text-white p-5 z-40 flex flex-col justify-between transition-transform duration-300 ease-in-out ${
           abierto ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        {/* Logo */}
-        <div className="mb-5">
-          <div className="bg-[#181A36] rounded-xl p-5">
-            <img
-              src={Logo}
-              alt="Logo"
-              className="mx-auto w-60 h-60 object-contain"
-            />
+        {/* Parte Superior: Logo y Opciones */}
+        <div className="flex flex-col h-full overflow-y-auto">
+          {/* Contenedor del Logo */}
+          <div className="mb-6 flex-shrink-0">
+            <div className="bg-[#181A36] rounded-xl p-4 flex items-center justify-center shadow-inner">
+              <img
+                src="/src/assets/Logo.png"
+                alt="Logo Agua Clara"
+                className="w-24 h-24 object-contain target-logo"
+              />
+            </div>
           </div>
+
+          {/* Lista de Navegación */}
+          <nav className="space-y-1.5 flex-1">
+            {opciones.map((opcion) => {
+              const activo = location.pathname === opcion.ruta;
+              return (
+                <Link
+                  key={opcion.ruta}
+                  to={opcion.ruta}
+                  onClick={() => setAbierto(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                    activo
+                      ? "bg-sky-500 text-white shadow-md shadow-sky-500/20"
+                      : "text-slate-300 hover:bg-[#149CFE] hover:text-white"
+                  }`}
+                >
+                  <span className={activo ? "text-white" : "text-slate-400 group-hover:text-white"}>
+                    {opcion.icono}
+                  </span>
+                  <span className="text-sm">{opcion.nombre}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Opciones */}
-        <nav className="space-y-2">
-          {opciones.map((opcion) => (
-            <Link
-              key={opcion.ruta}
-              to={opcion.ruta}
-              onClick={() => setAbierto(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                location.pathname === opcion.ruta
-                  ? "bg-sky-500 text-white"
-                  : "text-white hover:bg-[#149CFE]"
-              }`}
-            >
-              <span>{opcion.icono}</span>
-              {opcion.nombre}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Salir */}
-        <button
-          className="absolute bottom-8 left-5 bg-white text-black px-5 py-2 rounded font-semibold flex items-center gap-2"
-        >
-          <FaSignOutAlt />
-          Salir
-        </button>
+        {/* Parte Inferior: Botón Salir */}
+        <div className="pt-4 border-t border-slate-800 flex-shrink-0">
+          <button
+            className="w-full bg-[#181A36] text-rose-400 hover:bg-rose-500 hover:text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all duration-200 shadow-md"
+          >
+            <FaSignOutAlt size={16} />
+            <span>Salir</span>
+          </button>
+        </div>
       </aside>
     </>
   );
