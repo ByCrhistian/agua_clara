@@ -20,22 +20,22 @@ export default function Menu() {
     },
     {
       nombre: "Abonos",
-      ruta: "/Abonos",
+      ruta: "/Lista_abonos",
       icono: <MdAccountBalanceWallet size={20} />,
     },
     {
       nombre: "Pagados",
-      ruta: "/Pagados",
+      ruta: "/Lista_pagados",
       icono: <MdCleanHands size={20} />,
     },
     {
       nombre: "Insumos",
-      ruta: "/Insumos",
+      ruta: "/Lista_insumos",
       icono: <MdShoppingBasket size={20} />,
     },
     {
       nombre: "Empleados",
-      ruta: "/Empleados",
+      ruta: "/Lista_empleados",
       icono: <MdPerson size={20} />,
     },
   ];

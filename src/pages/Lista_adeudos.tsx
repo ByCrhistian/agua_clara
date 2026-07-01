@@ -4,7 +4,7 @@ import Boton_agregar from "../components/Boton_agregar";
 
 function Lista_adeudos() {
   
-  // 1. Definimos las columnas específicas para el panel de Viajes
+ 
   const columnasAdeudos = [
     {
       title: 'Nombre Cliente',
@@ -32,7 +32,7 @@ function Lista_adeudos() {
     },
   ];
 
-  // 2. Definimos los datos de prueba (7 registros como tenías originalmente)
+ 
   const datosAdeudos = Array.from({ length: 5 }, (_, index) => ({
     key: index.toString(),
     nombre: 'Cliente 1',
@@ -45,7 +45,7 @@ function Lista_adeudos() {
       <h1 className="text-4xl font-bold mb-4">Lista de Adeudos</h1>
      
       
-      {/* 3. Inyectamos las columnas y los datos a tu componente Tabla */}
+      
       <Tabla columnas={columnasAdeudos} datos={datosAdeudos} />
       
       <Boton_agregar>Agregar adeudo</Boton_agregar>
