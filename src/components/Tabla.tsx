@@ -34,7 +34,7 @@ export default function TablaGenerica({ columnas, datos }: TablaGenericaProps) {
           dataSource={datos}
           showHeader={true}
           pagination={{
-            pageSize: 6,                // Máximo 5 filas
+            pageSize: 5,                // Máximo 5 filas
             position: ['bottomCenter'], // Centra los números abajo
             showSizeChanger: false      // Mantiene limpio el diseño
           }}
