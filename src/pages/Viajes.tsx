@@ -167,6 +167,16 @@ function Viajes() {
             type="number"
             required
           />
+
+          <InputFormularios
+            label="Garrafones de regreso"
+            name="garrafones_regreso_llenos"
+            placeholder="Cant. de garrafones que regresan llenos"
+            type="number"
+            required
+          />
+
+          
             
         </Form>
       </Modal>
