@@ -2,12 +2,72 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const query = require("./query");
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
+const db = require("./db");
 const app = express();
-const PORT = 5002;
+const PORT = process.env.PORT || 5173;
 
 app.use(cors());
 app.use(express.json());
+
+//-----EMPIEZA API LOGIN------//
+app.post("/login", (req, res) => {
+  const { usuario, contrasena } = req.body;
+
+  const sql = `
+    SELECT
+      v.pk_vendedor,
+      v.usuario,
+      v.contrasena,
+      v.estatus,
+      r.nom_role AS rol
+    FROM vendedor v
+    INNER JOIN rol_usuario ru
+      ON ru.fk_vendedor = v.pk_vendedor
+    INNER JOIN roles r
+      ON r.pk_roles = ru.fk_roles
+    WHERE v.usuario = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [usuario], async (error, results) => {
+    if (error) {
+      return res.status(500).json({ mensaje: "Error en el servidor" });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ mensaje: "Usuario no encontrado" });
+    }
+
+    const usuarioBD = results[0];
+
+    if (contrasena !== usuarioBD.contrasena) {
+      return res.status(401).json({ mensaje: "Contraseña incorrecta" });
+    }
+
+    const token = jwt.sign(
+      {
+        id: usuarioBD.pk_vendedor,
+        rol: usuarioBD.rol,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "8h" }
+    );
+
+    res.json({
+      token,
+      usuario: {
+        id: usuarioBD.pk_vendedor,
+        usuario: usuarioBD.usuario,
+        nombre: usuarioBD.usuario,
+        rol: usuarioBD.rol,
+        token,
+      },
+    });
+  });
+});
 
 // --- PANEL DE VIAJES ---
 app.get('/obtenerViajesRuta', async (req, res) => {
