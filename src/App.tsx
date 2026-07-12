@@ -9,6 +9,9 @@ import Lista_empleados from "./pages/Lista_empleados";
 import Lista_insumos from "./pages/Lista_insumos";
 import Lista_abonos from "./pages/Lista_abonos";
 import Lista_pagados from "./pages/Lista_pagados";
+import ProteccionRutas from "./auth/ProteccionRutas";
+import Login from "./pages/Login";
+import Corte_de_caja from "./pages/Corte_de_caja";
 
 
 function PanelContenedor({ pagina }: { pagina: React.ReactNode }) {
@@ -26,33 +29,64 @@ function PanelContenedor({ pagina }: { pagina: React.ReactNode }) {
 function App() {
   const router = createBrowserRouter([
     {
+      path: "/Login",
+      element: <Login />
+    },
+    {
       path: "/Viajes",
-      
-      element: <PanelContenedor pagina={<Viajes />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Viajes/>} />
+        </ProteccionRutas>
+      )
     },
     {
       path: "/",
-      element: <PanelContenedor pagina={<Viajes />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Corte_de_caja />} />
+        </ProteccionRutas>
+      )    
     },
     {
       path: "/Lista_adeudos",
-      element: <PanelContenedor pagina={<Lista_adeudos />} />
-    },
-    {
-      path: "/Lista_empleados",
-      element: <PanelContenedor pagina={<Lista_empleados />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Lista_adeudos />} />
+        </ProteccionRutas>
+      )
     },
     {
       path: "/Lista_insumos",
-      element: <PanelContenedor pagina={<Lista_insumos />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Lista_insumos />} />
+        </ProteccionRutas>
+      )
     },
     {
       path: "/Lista_abonos",
-      element: <PanelContenedor pagina={<Lista_abonos />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Lista_abonos />} />
+        </ProteccionRutas>
+      )
     },
     {
       path: "/Lista_pagados",
-      element: <PanelContenedor pagina={<Lista_pagados />} />
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Lista_pagados />} />
+        </ProteccionRutas>
+      )
+    },
+    {
+      path: "/Lista_empleados",
+      element: (
+        <ProteccionRutas>
+          <PanelContenedor pagina={<Lista_empleados />} />
+        </ProteccionRutas>
+      )
     }
   ]);
 

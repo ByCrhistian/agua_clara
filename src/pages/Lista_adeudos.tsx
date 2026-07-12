@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, message, Tag } from 'antd';
+import { Form, message, Tag, Input } from 'antd';
 import Tabla from "../components/Tabla";
 import Boton_agregar from "../components/Boton_agregar";
 import Modal from "../components/Modal";
@@ -12,6 +12,7 @@ function Lista_adeudos() {
   const [isMasDeudaModalOpen, setIsMasDeudaModalOpen] = useState(false);
   
   const [datosAdeudos, setDatosAdeudos] = useState<any[]>([]);
+  const [textoBusqueda, setTextoBusqueda] = useState('');
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
 
   const [formAdeudo] = Form.useForm();
@@ -33,6 +34,12 @@ function Lista_adeudos() {
   useEffect(() => {
     obtenerAdeudos();
   }, []);
+
+  // Lógica de filtrado
+  const datosFiltrados = datosAdeudos.filter((item) =>
+    item.nombre_cliente?.toLowerCase().includes(textoBusqueda.toLowerCase()) ||
+    item.localidad?.toLowerCase().includes(textoBusqueda.toLowerCase())
+  );
 
   const handleGuardarAdeudo = () => {
     formAdeudo.validateFields().then((valores) => {
@@ -99,7 +106,18 @@ function Lista_adeudos() {
   return (
     <>  
       <h1 className="text-4xl font-bold mb-4">Cuentas por Cobrar</h1>
-      <Tabla columnas={columnasAdeudos} datos={datosAdeudos} />
+      
+      <div className="mb-4">
+        <Input 
+          placeholder="Buscar por cliente o localidad..." 
+          value={textoBusqueda}
+          onChange={(e) => setTextoBusqueda(e.target.value)}
+          className="w-full md:w-1/3"
+        />
+      </div>
+
+      <Tabla columnas={columnasAdeudos} datos={datosFiltrados} />
+      
       <Boton_agregar onClick={() => setIsAdeudoModalOpen(true)}>Registrar Nuevo Adeudo</Boton_agregar>
 
       <Modal titulo="Registrar Cargo Inicial" isOpen={isAdeudoModalOpen} onClose={() => setIsAdeudoModalOpen(false)} onGuardar={handleGuardarAdeudo}>

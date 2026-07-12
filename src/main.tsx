@@ -1,11 +1,10 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
+import ReactDOM from "react-dom/client";
 import App from "./App";
+import { AuthProvider } from "./auth/AuthContext";
+import "./index.css";
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    {/* Dejamos solo a <App />, ya que el RouterProvider de tu maestro vive adentro */}
-    <App /> 
-  </StrictMode>
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <AuthProvider>
+    <App />
+  </AuthProvider>
 );

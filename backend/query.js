@@ -58,42 +58,35 @@ async function getAdeudosActivos() {
             l.nom_localidad AS localidad, 
             ap.cantidad_debida AS garrafones_deben, 
             ap.monto_deuda_original AS total_deuda, 
-            ap.saldo_pendiente AS total_abonado 
+            ap.saldo_pendiente AS saldo_actual
         FROM persona p 
         INNER JOIN localidad l ON p.fk_localidad = l.pk_localidad 
         INNER JOIN adeudos_pendientes ap ON ap.fk_cliente = p.pk_persona
-        WHERE ap.estatus_deuda = 'Pendiente'
+        WHERE ap.estatus_deuda = 'Pendiente' 
+        AND ap.saldo_pendiente > 0
     `);
     return rows;
 }
 
 async function updateAdeudo(pk, monto_extra, garrafones_extra) {
-    // IMPORTANTE: Asegúrate de que apunte a 'adeudos_pendientes' si esa es la tabla real
     await db.query(`
         UPDATE adeudos_pendientes 
         SET monto_deuda_original = monto_deuda_original + ?, 
-            cantidad_debida = cantidad_debida + ? 
+            cantidad_debida = cantidad_debida + ?,
+            fecha_deuda = NOW() 
         WHERE pk_adeudos_pendientes = ?
     `, [monto_extra, garrafones_extra, pk]);
 }
-
 const updateAbono = async (pk, monto) => {
-    // 1. Restamos el abono al saldo actual
-    await db.query(`
-        UPDATE adeudos_pendientes 
-        SET saldo_pendiente = saldo_pendiente - ? 
-        WHERE pk_adeudos_pendientes = ?
-    `, [monto, pk]);
-
-    // 2. Automáticamente cambiamos a "Pagado" si el saldo ya no es positivo
-    await db.query(`
-        UPDATE adeudos_pendientes 
-        SET estatus_deuda = 'Pagado' 
-        WHERE pk_adeudos_pendientes = ? AND saldo_pendiente <= 0
-    `, [pk]);
+    await db.query(
+        'UPDATE adeudos_pendientes SET saldo_pendiente = saldo_pendiente - ? WHERE pk_adeudos_pendientes = ?', 
+        [monto, pk]
+    );
+    await db.query(
+        'UPDATE adeudos_pendientes SET estatus_deuda = "Pagado" WHERE pk_adeudos_pendientes = ? AND saldo_pendiente <= 0', 
+        [pk]
+    );
 };
-
-
 
 async function getPagados() {
     const [rows] = await db.query(`
@@ -107,11 +100,105 @@ async function getPagados() {
         FROM adeudos_pendientes ap 
         INNER JOIN persona p ON ap.fk_cliente = p.pk_persona 
         WHERE ap.estatus_deuda = 'Pagado'
-        ORDER BY ap.fecha_deuda DESC
     `);
     return rows;
 }
 
+// --- INSUMOS ---
+async function getInsumos() {
+    const [rows] = await db.query(`
+        SELECT 
+            iv.pk_insumos_vendedor AS "key", 
+            CONCAT(p.nombres, ' ', p.a_paterno, ' ', p.a_materno) AS vendedor, 
+            ins.nom_insumo AS nombre_insumo, 
+            iv.monto_gasto, 
+            iv.saldo_pendiente, 
+            iv.estatus_descuento 
+        FROM persona p 
+        INNER JOIN vendedor v ON p.pk_persona = v.fk_persona 
+        INNER JOIN viajes vi ON v.pk_vendedor = vi.fk_vendedor 
+        INNER JOIN insumos_vendedor iv ON iv.fk_viajes = vi.pk_viajes 
+        INNER JOIN insumos ins ON ins.pk_insumos = iv.fk_insumos
+        WHERE iv.estatus_descuento = 'Pendiente'
+    `);
+    return rows;
+}
+
+async function insertInsumo(fk_vendedor, nombre, monto, saldo) {
+    await db.query(
+        'INSERT INTO insumos_vendedor (fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente) VALUES (?, ?, ?, ?)',
+        [fk_vendedor, nombre, monto, saldo]
+    );
+}
+
+
+async function updateAbonoInsumo(pk, monto) {
+   
+    await db.query(
+        'UPDATE insumos_vendedor SET saldo_pendiente = saldo_pendiente - ? WHERE pk_insumos_vendedor = ?', 
+        [monto, pk]
+    );
+    
+  
+    
+    await db.query(
+        'UPDATE insumos_vendedor SET estatus_descuento = "Liquidado" WHERE pk_insumos_vendedor = ? AND saldo_pendiente <= 0', 
+        [pk]
+    );
+}
+
+async function getSaldosVendedores() {
+    const [rows] = await db.query(`
+        SELECT 
+            CONCAT(p.nombres, ' ', p.a_paterno) AS vendedor, 
+            SUM(iv.saldo_pendiente) AS total_deuda
+        FROM persona p 
+        INNER JOIN vendedor v ON p.pk_persona = v.fk_persona
+        INNER JOIN viajes vi ON v.pk_vendedor = vi.fk_vendedor
+        INNER JOIN insumos_vendedor iv ON iv.fk_viajes = vi.pk_viajes
+        WHERE iv.saldo_pendiente > 0
+        GROUP BY p.pk_persona
+    `);
+    return rows;
+}
+
+// Asegúrate de adaptar los nombres de las columnas a tu BD real
+async function obtenerCorteCajaDB(fecha) {
+  const query = `
+    SELECT a.fecha_abono as fecha, CONCAT(p.nombres, ' ', p.a_paterno) as nombre_cliente, 'Abono Cliente' as concepto, a.monto_abonado as monto
+    FROM abonos_clientes a
+    JOIN adeudos_pendientes ad ON a.fk_adeudos_pendientes = ad.pk_adeudos_pendientes
+    JOIN cliente c ON ad.fk_cliente = c.pk_cliente
+    JOIN persona p ON c.fk_persona = p.pk_persona
+    WHERE a.fecha_abono = ?
+    UNION ALL
+    SELECT ai.fecha_abono as fecha, 'Vendedor' as nombre_cliente, CONCAT('Gasto Insumo: ', i.nom_insumo) as concepto, -ai.monto_abonado as monto
+    FROM abonos_insumos ai
+    JOIN insumos_vendedor iv ON ai.fk_insumos_vendedor = iv.pk_insumos_vendedor
+    JOIN insumos i ON iv.fk_insumos = i.pk_insumos
+    WHERE ai.fecha_abono = ?
+  `;
+  
+  // pool.query debe estar correctamente definido arriba en tu archivo
+  const [rows] = await db.query(query, [fecha, fecha]);
+  return rows;
+};
+
+async function obtenerResumenCorte(fecha) {
+  const query = `
+    SELECT 
+      (SELECT IFNULL(SUM(garrafones_vendidos), 0) FROM viajes WHERE DATE(fecha_viaje) = ?) as total_garrafones_vendidos,
+      (SELECT IFNULL(SUM(monto_deuda_original), 0) FROM adeudos_pendientes WHERE DATE(fecha_deuda) = ?) as total_fiado_dinero,
+      (SELECT IFNULL(SUM(cantidad_debida), 0) FROM adeudos_pendientes WHERE DATE(fecha_deuda) = ?) as total_garrafones_fiados,
+      (SELECT IFNULL(SUM(iv.monto_gasto), 0) 
+       FROM insumos_vendedor iv 
+       INNER JOIN viajes v ON iv.fk_viajes = v.pk_viajes 
+       WHERE DATE(v.fecha_viaje) = ?) as total_gasto_insumos
+  `;
+  
+  const [rows] = await db.query(query, [fecha, fecha, fecha, fecha]);
+  return rows[0]; 
+}
 module.exports = {
     getViajesRuta,
     insertViajeRuta,
@@ -121,5 +208,11 @@ module.exports = {
     getAdeudosActivos,
     updateAdeudo,
     updateAbono,
-    getPagados
+    getPagados,
+    getInsumos,
+    insertInsumo,
+    updateAbonoInsumo,
+    getSaldosVendedores,
+    obtenerCorteCajaDB,
+    obtenerResumenCorte
 };
