@@ -24,18 +24,19 @@ export default function Menu() {
   };
 
   const opciones = [
+     {
+      nombre: "Corte de Caja",
+      ruta: "/",
+      icono: <MdLocalGroceryStore size={20} />,
+      roles: ["Administrador"],
+    },
     {
       nombre: "Viajes",
       ruta: "/Viajes",
       icono: <MdDateRange size={20} />,
       roles: ["Administrador", "Vendedor"],
     },
-     {
-      nombre: "Corte de Caja",
-      ruta: "/Corte_de_caja",
-      icono: <MdLocalGroceryStore size={20} />,
-      roles: ["Administrador"],
-    },
+    
     {
       nombre: "Lista de Adeudos",
       ruta: "/Lista_adeudos",

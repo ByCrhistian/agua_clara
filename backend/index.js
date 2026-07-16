@@ -130,9 +130,15 @@ app.get('/obtenerAdeudosActivos', async (req, res) => {
 app.post('/actualizarAdeudo', async (req, res) => {
     try {
         const { pk_adeudos, monto_extra, garrafones_extra } = req.body;
-        await query.updateAdeudo(pk_adeudos, monto_extra, garrafones_extra);
+        // Convertimos explícitamente a números antes de enviar a la base de datos
+        await query.updateAdeudoExtra(
+            pk_adeudos, 
+            parseFloat(monto_extra), 
+            parseInt(garrafones_extra)
+        );
         res.json({ mensaje: 'Adeudo actualizado' });
     } catch (error) {
+        console.error("Error en actualizarAdeudo:", error);
         res.status(500).json({ error: 'Error al actualizar adeudo' });
     }
 });
@@ -140,13 +146,14 @@ app.post('/actualizarAdeudo', async (req, res) => {
 app.post('/actualizarAbonoAdeudo', async (req, res) => {
     try {
         const { pk_adeudos, monto_abono } = req.body;
-        await query.updateAbono(pk_adeudos, monto_abono);
+        // Igual aquí, convertimos el monto a número
+        await query.updateAbono(pk_adeudos, parseFloat(monto_abono));
         res.json({ mensaje: 'Abono registrado correctamente' });
     } catch (error) {
+        console.error("Error en actualizarAbonoAdeudo:", error);
         res.status(500).json({ error: 'Error al procesar el abono' });
     }
 });
-
 app.get('/obtenerPagados', async (req, res) => {
     try {
         const pagados = await query.getPagados();
@@ -166,12 +173,24 @@ app.get('/obtenerInsumos', async (req, res) => {
     }
 });
 
+// app.post('/insertarInsumo', async (req, res) => {
+//     try {
+//         const { fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente } = req.body;
+//         await query.insertInsumo(fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente);
+//         res.json({ mensaje: 'Insumo registrado' });
+//     } catch (error) {
+//         res.status(500).json({ error: 'Error al registrar insumo' });
+//     }
+// });
+
 app.post('/insertarInsumo', async (req, res) => {
     try {
-        const { fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente } = req.body;
-        await query.insertInsumo(fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente);
+        const { fk_viajes, fk_insumos, monto_gasto, saldo_pendiente } = req.body;
+        // Pasamos los argumentos en el orden exacto de la función query
+        await query.insertInsumo(fk_viajes, fk_insumos, monto_gasto, saldo_pendiente);
         res.json({ mensaje: 'Insumo registrado' });
     } catch (error) {
+        console.error("Error al registrar:", error);
         res.status(500).json({ error: 'Error al registrar insumo' });
     }
 });
@@ -207,6 +226,17 @@ app.get('/obtenerResumenCorte', async (req, res) => {
   } catch (err) {
     console.error("Error al obtener resumen:", err);
     res.status(500).json({ error: "Error al obtener resumen de corte" });
+  }
+});
+
+
+app.post('/registrarAdeudoCompleto', async (req, res) => {
+  try {
+    await query.registrarNuevoAdeudoCompleto(req.body);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error en el servidor" });
   }
 });
 

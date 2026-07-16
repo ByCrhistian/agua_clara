@@ -16,12 +16,92 @@ async function getViajesRuta() {
     return rows;
 }
 
-async function insertViajeRuta(fk_vendedor, fk_localidad, garrafones_salida, garrafones_regreso_llenos) {
-    const [rows] = await db.query(
-        'INSERT INTO viajes (fecha_viaje, garrafones_salida, garrafones_regreso_llenos, garrafones_vendidos, estatus_liquidacion, fk_vendedor, fk_localidad) ' +
-        'VALUES (NOW(), ?, ?, 0, "Pendiente", ?, ?)', [garrafones_salida, garrafones_regreso_llenos, fk_vendedor, fk_localidad]
-    );
-    return rows;
+async function insertViajeRuta(
+    fk_vendedor, 
+    fk_localidad, 
+    garrafones_salida, 
+    garrafones_regreso_llenos
+) {
+
+    const connection = await db.getConnection();
+
+    try {
+
+        await connection.beginTransaction();
+
+        const garrafones_vendidos = 
+            garrafones_salida - garrafones_regreso_llenos;
+
+
+        // Crear viaje
+        const [viaje] = await connection.query(
+            `
+            INSERT INTO viajes 
+            (
+                fecha_viaje,
+                garrafones_salida,
+                garrafones_regreso_llenos,
+                garrafones_vendidos,
+                estatus_liquidacion,
+                fk_vendedor,
+                fk_localidad
+            )
+            VALUES
+            (
+                NOW(),
+                ?,
+                ?,
+                ?,
+                'Liquidado',
+                ?,
+                ?
+            )
+            `,
+            [
+                garrafones_salida,
+                garrafones_regreso_llenos,
+                garrafones_vendidos,
+                fk_vendedor,
+                fk_localidad
+            ]
+        );
+
+
+        // ID del viaje recién creado
+        const pk_viajes = viaje.insertId;
+
+
+        // Asociar adeudos pendientes al viaje recién creado
+        await connection.query(
+            `
+            UPDATE adeudos_pendientes
+            SET fk_viajes = ?
+            WHERE fk_viajes IS NULL
+            `,
+            [pk_viajes]
+        );
+
+
+        await connection.commit();
+
+
+        return {
+            success: true,
+            pk_viajes,
+            garrafones_vendidos
+        };
+
+
+    } catch(error) {
+
+        await connection.rollback();
+        throw error;
+
+    } finally {
+
+        connection.release();
+
+    }
 }
 
 async function liquidarViajeRuta(pk_viajes, garrafones_regreso_llenos) {
@@ -54,39 +134,50 @@ async function getAdeudosActivos() {
     const [rows] = await db.query(`
         SELECT 
             ap.pk_adeudos_pendientes AS "key", 
-            CONCAT(p.nombres, ' ', p.a_paterno, ' ', p.a_materno) AS nombre_cliente, 
+            CONCAT(p.nombres, ' ', p.a_paterno, ' ', IFNULL(p.a_materno, '')) AS nombre_cliente, 
             l.nom_localidad AS localidad, 
             ap.cantidad_debida AS garrafones_deben, 
             ap.monto_deuda_original AS total_deuda, 
             ap.saldo_pendiente AS saldo_actual
         FROM persona p 
         INNER JOIN localidad l ON p.fk_localidad = l.pk_localidad 
-        INNER JOIN adeudos_pendientes ap ON ap.fk_cliente = p.pk_persona
+        INNER JOIN cliente c ON c.fk_persona = p.pk_persona
+        INNER JOIN adeudos_pendientes ap ON ap.fk_cliente = c.pk_cliente
         WHERE ap.estatus_deuda = 'Pendiente' 
         AND ap.saldo_pendiente > 0
     `);
     return rows;
 }
 
-async function updateAdeudo(pk, monto_extra, garrafones_extra) {
-    await db.query(`
-        UPDATE adeudos_pendientes 
-        SET monto_deuda_original = monto_deuda_original + ?, 
-            cantidad_debida = cantidad_debida + ?,
-            fecha_deuda = NOW() 
-        WHERE pk_adeudos_pendientes = ?
-    `, [monto_extra, garrafones_extra, pk]);
+// En query.js, asegúrate de que las consultas luzcan así:
+
+async function updateAdeudoExtra(pk, monto, garrafones) {
+    const [rows] = await db.query(
+        `UPDATE adeudos_pendientes
+         SET saldo_pendiente = saldo_pendiente + ?,
+             cantidad_debida = cantidad_debida + ?
+         WHERE pk_adeudos_pendientes = ?`,
+        [monto, garrafones, pk]
+    );
+
+    return rows;
 }
-const updateAbono = async (pk, monto) => {
-    await db.query(
-        'UPDATE adeudos_pendientes SET saldo_pendiente = saldo_pendiente - ? WHERE pk_adeudos_pendientes = ?', 
-        [monto, pk]
+
+async function updateAbono(pk, monto) {
+    const [rows] = await db.query(
+        `UPDATE adeudos_pendientes
+         SET 
+            saldo_pendiente = GREATEST(saldo_pendiente - ?, 0),
+            estatus_deuda = CASE 
+                WHEN saldo_pendiente - ? <= 0 THEN 'Pagado'
+                ELSE 'Pendiente'
+            END
+         WHERE pk_adeudos_pendientes = ?`,
+        [monto, monto, pk]
     );
-    await db.query(
-        'UPDATE adeudos_pendientes SET estatus_deuda = "Pagado" WHERE pk_adeudos_pendientes = ? AND saldo_pendiente <= 0', 
-        [pk]
-    );
-};
+
+    return rows;
+}
 
 async function getPagados() {
     const [rows] = await db.query(`
@@ -124,13 +215,22 @@ async function getInsumos() {
     return rows;
 }
 
-async function insertInsumo(fk_vendedor, nombre, monto, saldo) {
+// async function insertInsumo(fk_vendedor, nombre, monto, saldo) {
+//     await db.query(
+//         'INSERT INTO insumos_vendedor (fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente) VALUES (?, ?, ?, ?)',
+//         [fk_vendedor, nombre, monto, saldo]
+//     );
+// }
+
+
+// En tu archivo donde tienes tus queries
+async function insertInsumo(fk_viajes, fk_insumos, monto, saldo) {
+    // Insertamos solo en las columnas existentes
     await db.query(
-        'INSERT INTO insumos_vendedor (fk_vendedor, nombre_insumo, monto_gasto, saldo_pendiente) VALUES (?, ?, ?, ?)',
-        [fk_vendedor, nombre, monto, saldo]
+        'INSERT INTO insumos_vendedor (fk_viajes, fk_insumos, monto_gasto, saldo_pendiente) VALUES (?, ?, ?, ?)',
+        [fk_viajes, fk_insumos, monto, saldo]
     );
 }
-
 
 async function updateAbonoInsumo(pk, monto) {
    
@@ -199,6 +299,41 @@ async function obtenerResumenCorte(fecha) {
   const [rows] = await db.query(query, [fecha, fecha, fecha, fecha]);
   return rows[0]; 
 }
+
+async function registrarNuevoAdeudoCompleto(datos) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [persona] = await connection.query(
+      'INSERT INTO persona (nombres, a_paterno, a_materno, estatus, fk_localidad) VALUES (?, ?, ?, 1, ?)',
+      [datos.nombres, datos.a_paterno, datos.a_materno, datos.fk_localidad]
+    );
+    const pk_persona = persona.insertId;
+
+    const cod_unico = 'C-' + Date.now();
+
+    const [cliente] = await connection.query(
+      'INSERT INTO cliente (fk_persona, estatus, cod_cliente) VALUES (?, 1, ?)',
+      [pk_persona, cod_unico]
+    );
+    const pk_cliente = cliente.insertId;
+
+    await connection.query(`
+      INSERT INTO adeudos_pendientes 
+      (fk_cliente, fk_viajes, monto_deuda_original, saldo_pendiente, cantidad_debida, fecha_deuda, estatus_deuda) 
+      VALUES (?, NULL, ?, ?, ?, NOW(), 'Pendiente')
+    `, [pk_cliente, datos.monto, datos.monto, datos.garrafones]);
+
+    await connection.commit();
+    return { success: true };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
 module.exports = {
     getViajesRuta,
     insertViajeRuta,
@@ -206,13 +341,15 @@ module.exports = {
     getVendedoresOpciones,
     getLocalidadesOpciones,
     getAdeudosActivos,
-    updateAdeudo,
     updateAbono,
+    updateAdeudoExtra,
     getPagados,
     getInsumos,
     insertInsumo,
     updateAbonoInsumo,
     getSaldosVendedores,
     obtenerCorteCajaDB,
-    obtenerResumenCorte
+    obtenerResumenCorte,
+    registrarNuevoAdeudoCompleto,
+    
 };
